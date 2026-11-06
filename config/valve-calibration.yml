@@ -4,36 +4,37 @@
 #
 # The balance is read by eye (OpenRigs.Devices ManualBalance): after each burst the run asks for the
 # weight and waits up to weighTimeoutS for it to be typed, taking that one reading (settleWindow 1).
-# Each sample fires `repeats` pulses at `size` ms, then weighs the gain. Seven widths, 20 to 100 ms
-# evenly spaced (to the ms), each measured 3 times, in rounds of all seven in a shuffled order (fixed
-# here, the same every run), so drift over the run falls on every width alike; the fit (LinearFit)
-# averages the repeats. Each width delivers in all about what 500 pulses at 20 ms do, taking volume
-# as proportional to width; per round 167 at 20 ms, 101 at 33, 71 at 47, 56 at 60, 46 at 73, 38 at
-# 87 and 33 at 100 (Pip, 6 Nov 2026). Pulses are 63 ms apart, 1.25 times the 50 ms av-dome leaves
-# between a reward's pulses (rig.yml interPulseInterval).
+# Each sample fires `repeats` pulses at `size` ms, then weighs the gain. Seven widths, closer
+# together at the short end: 20, 25, 30, 40, 50, 70 and 100 ms, each measured 3 times, in rounds of
+# all seven in a shuffled order (fixed here, the same every run), so drift over the run falls on
+# every width alike; the fit (LinearFit) averages the repeats. All the samples together deliver
+# about what 2000 pulses at 20 ms do, the same share for each width, taking volume as proportional
+# to width; per burst 95 at 20 ms, 76 at 25, 63 at 30, 48 at 40, 38 at 50, 27 at 70 and 19 at 100
+# (Pip, 6 Nov 2026). Pulses are 63 ms apart, 1.25 times the 50 ms av-dome leaves between a reward's
+# pulses (rig.yml interPulseInterval).
 procedure:
   samples:
-    - { size: 60, repeats: 56, interPulseIntervalMs: 63 }  # round 1
-    - { size: 47, repeats: 71, interPulseIntervalMs: 63 }
-    - { size: 73, repeats: 46, interPulseIntervalMs: 63 }
-    - { size: 33, repeats: 101, interPulseIntervalMs: 63 }
-    - { size: 100, repeats: 33, interPulseIntervalMs: 63 }
-    - { size: 20, repeats: 167, interPulseIntervalMs: 63 }
-    - { size: 87, repeats: 38, interPulseIntervalMs: 63 }
-    - { size: 33, repeats: 101, interPulseIntervalMs: 63 } # round 2
-    - { size: 20, repeats: 167, interPulseIntervalMs: 63 }
-    - { size: 100, repeats: 33, interPulseIntervalMs: 63 }
-    - { size: 87, repeats: 38, interPulseIntervalMs: 63 }
-    - { size: 60, repeats: 56, interPulseIntervalMs: 63 }
-    - { size: 47, repeats: 71, interPulseIntervalMs: 63 }
-    - { size: 73, repeats: 46, interPulseIntervalMs: 63 }
-    - { size: 47, repeats: 71, interPulseIntervalMs: 63 }  # round 3
-    - { size: 73, repeats: 46, interPulseIntervalMs: 63 }
-    - { size: 60, repeats: 56, interPulseIntervalMs: 63 }
-    - { size: 33, repeats: 101, interPulseIntervalMs: 63 }
-    - { size: 100, repeats: 33, interPulseIntervalMs: 63 }
-    - { size: 20, repeats: 167, interPulseIntervalMs: 63 }
-    - { size: 87, repeats: 38, interPulseIntervalMs: 63 }
+    - { size: 40, repeats: 48, interPulseIntervalMs: 63 } # round 1
+    - { size: 30, repeats: 63, interPulseIntervalMs: 63 }
+    - { size: 50, repeats: 38, interPulseIntervalMs: 63 }
+    - { size: 25, repeats: 76, interPulseIntervalMs: 63 }
+    - { size: 100, repeats: 19, interPulseIntervalMs: 63 }
+    - { size: 20, repeats: 95, interPulseIntervalMs: 63 }
+    - { size: 70, repeats: 27, interPulseIntervalMs: 63 }
+    - { size: 25, repeats: 76, interPulseIntervalMs: 63 } # round 2
+    - { size: 20, repeats: 95, interPulseIntervalMs: 63 }
+    - { size: 100, repeats: 19, interPulseIntervalMs: 63 }
+    - { size: 70, repeats: 27, interPulseIntervalMs: 63 }
+    - { size: 40, repeats: 48, interPulseIntervalMs: 63 }
+    - { size: 30, repeats: 63, interPulseIntervalMs: 63 }
+    - { size: 50, repeats: 38, interPulseIntervalMs: 63 }
+    - { size: 30, repeats: 63, interPulseIntervalMs: 63 } # round 3
+    - { size: 50, repeats: 38, interPulseIntervalMs: 63 }
+    - { size: 40, repeats: 48, interPulseIntervalMs: 63 }
+    - { size: 25, repeats: 76, interPulseIntervalMs: 63 }
+    - { size: 100, repeats: 19, interPulseIntervalMs: 63 }
+    - { size: 20, repeats: 95, interPulseIntervalMs: 63 }
+    - { size: 70, repeats: 27, interPulseIntervalMs: 63 }
   xName: pulse_width
   xUnit: ms
   primingPulses: 5
