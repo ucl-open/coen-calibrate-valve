@@ -4,18 +4,29 @@
 #
 # The balance is read by eye (OpenRigs.Devices ManualBalance): after each burst the run asks for the
 # weight and waits up to weighTimeoutS for it to be typed, taking that one reading (settleWindow 1).
-# Each sample fires `repeats` pulses at `size` ms, then weighs the gain. Pick repeats so the gain
-# per sample is well above the balance's last digit: 100 pulses at the short widths, fewer at the
-# long ones, where each pulse delivers more; widths from 20 ms (Pip, 6 Nov 2026). Pulses are 50 ms
-# apart, as av-dome delivers a reward (rig.yml interPulseInterval), so the curve is measured as
-# rewards are given.
+# Each sample fires `repeats` pulses at `size` ms, then weighs the gain. Each width is measured 3
+# times, in rounds of all five in a shuffled order (fixed here, the same every run), so drift over
+# the run falls on every width alike; the fit (LinearFit) averages the repeats. Each width delivers
+# in all about what 500 pulses at 20 ms do, taking volume as proportional to width: per round 167 at
+# 20 ms, 111 at 30, 83 at 40, 56 at 60 and 42 at 80 (Pip, 6 Nov 2026). Pulses are 63 ms apart,
+# 1.25 times the 50 ms av-dome leaves between a reward's pulses (rig.yml interPulseInterval).
 procedure:
   samples:
-    - { size: 20, repeats: 100, interPulseIntervalMs: 50 }
-    - { size: 30, repeats: 100, interPulseIntervalMs: 50 }
-    - { size: 40, repeats: 75, interPulseIntervalMs: 50 }
-    - { size: 60, repeats: 50, interPulseIntervalMs: 50 }
-    - { size: 80, repeats: 50, interPulseIntervalMs: 50 }
+    - { size: 30, repeats: 111, interPulseIntervalMs: 63 }   # round 1
+    - { size: 40, repeats: 83, interPulseIntervalMs: 63 }
+    - { size: 60, repeats: 56, interPulseIntervalMs: 63 }
+    - { size: 80, repeats: 42, interPulseIntervalMs: 63 }
+    - { size: 20, repeats: 167, interPulseIntervalMs: 63 }
+    - { size: 80, repeats: 42, interPulseIntervalMs: 63 }    # round 2
+    - { size: 60, repeats: 56, interPulseIntervalMs: 63 }
+    - { size: 30, repeats: 111, interPulseIntervalMs: 63 }
+    - { size: 40, repeats: 83, interPulseIntervalMs: 63 }
+    - { size: 20, repeats: 167, interPulseIntervalMs: 63 }
+    - { size: 30, repeats: 111, interPulseIntervalMs: 63 }   # round 3
+    - { size: 40, repeats: 83, interPulseIntervalMs: 63 }
+    - { size: 60, repeats: 56, interPulseIntervalMs: 63 }
+    - { size: 80, repeats: 42, interPulseIntervalMs: 63 }
+    - { size: 20, repeats: 167, interPulseIntervalMs: 63 }
   xName: pulse_width
   xUnit: ms
   primingPulses: 5

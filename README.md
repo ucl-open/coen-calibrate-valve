@@ -14,7 +14,7 @@ Run it from rig-control's Calibrations page, the only place it is offered: it is
   - `CameraSerialNumber`, `CameraExposureTime`: `camera: body:`'s, and `CameraFrequency`: `cameraTriggerController: trigger0Frequency`. The body camera runs on camera trigger 0 (DO0) and is streamed by `OpenRigs.LiveView` (5558) for the Calibrations page to show live; nothing is recorded. Trigger 1 stays off, so DO1 stays a valve line.
   
   `Notes` (free text kept in the curve) is taken only from a run in the Bonsai editor; the page sends none. The page refuses a line that `outputPulseEnable` does not list, and does not show one rig.yml gives another job (the domes' DO3, the Zapit TTL).
-- **`config\valve-calibration.yml`**: the procedure (pulse widths, repeats, priming, fit, and how long each weighing waits). Committed, the same for every rig. Five widths, each a burst weighed once: 20 ms x 100, 30 ms x 100, 40 ms x 75, 60 ms x 50 and 80 ms x 50 pulses, many at the short widths and fewer at the long ones, where each pulse delivers more. Pulses are 50 ms apart, the gap av-dome leaves between a reward's pulses (rig.yml `interPulseInterval`).
+- **`config\valve-calibration.yml`**: the procedure (pulse widths, repeats, priming, fit, and how long each weighing waits). Committed, the same for every rig. Five widths, each measured 3 times in rounds of all five in a shuffled order (fixed in the file), each burst weighed once: 15 weighings. Per burst 20 ms x 167, 30 ms x 111, 40 ms x 83, 60 ms x 56 and 80 ms x 42 pulses, so each width delivers in all about what 500 pulses at 20 ms do (volume taken as proportional to width). Pulses are 63 ms apart, 1.25 times the 50 ms av-dome leaves between a reward's pulses (rig.yml `interPulseInterval`).
 
 ## The Balance, Read by Eye
 
