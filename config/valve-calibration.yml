@@ -1,0 +1,35 @@
+# Settings of the valve calibration (OpenRigs.Core DispenseCalibration), read at Start by
+# src\main.bonsai. The valve line, its artefact and the behavior board's port come from the rig's
+# own rig.yml, never from here. balance.portName stays COMx: the balance port is the workflow's
+# BalancePort property, set at launch, since the balance is plugged in only to calibrate.
+#
+# Each sample fires `repeats` pulses at `size` ms, then weighs the gain once the balance has given
+# settleWindow stable readings. Pick repeats so the gain per sample is at least 50 times the
+# balance's last digit: on a 1 mg balance, 25 pulses of about 2 ul weigh about 50 mg.
+procedure:
+  samples:
+    - { size: 10, repeats: 25, interPulseIntervalMs: 500 }
+    - { size: 20, repeats: 25, interPulseIntervalMs: 500 }
+    - { size: 40, repeats: 25, interPulseIntervalMs: 500 }
+    - { size: 60, repeats: 25, interPulseIntervalMs: 500 }
+    - { size: 80, repeats: 25, interPulseIntervalMs: 500 }
+  xName: pulse_width
+  xUnit: ms
+  primingPulses: 5
+  densityGPerMl: 1.0
+  settleWindow: 10
+  weighTimeoutS: 60
+  fit: LinearFit
+  fitOrder: 2
+  requireMonotone: true
+balance:
+  portName: COMx
+  baudRate: 9600
+  tareCommand: T
+  printCommand: IP
+  printPeriodS: 0.5
+  bootDelayS: 0.5
+  tareDelayS: 1.5
+  unitSuffix: g
+  unstableMarker: "?"
+  ignore: ES

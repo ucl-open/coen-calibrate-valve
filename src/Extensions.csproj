@@ -1,13 +1,18 @@
-<Project Sdk="Microsoft.NET.Sdk">            
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
+    <!-- Bonsai compiles src\Extensions itself with the .NET Framework's csc, which is C# 5, so a
+         build here must refuse what Bonsai would. -->
+    <LangVersion>5</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Bonsai.Core" Version="2.9.0" />
     <PackageReference Include="YamlDotNet" Version="16.3.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Harp.Behavior" Version="0.2.0" />
+    <PackageReference Include="OpenRigs.Core" Version="0.1.1-coen.1" />
+    <PackageReference Include="OpenRigs.Control" Version="0.1.1-coen.4" />
   </ItemGroup>
 
 </Project>

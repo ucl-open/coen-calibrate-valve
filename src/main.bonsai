@@ -1,9 +1,408 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <WorkflowBuilder Version="2.9.0"
                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                 xmlns:rx="clr-namespace:Bonsai.Reactive;assembly=Bonsai.Core"
+                 xmlns:io="clr-namespace:Bonsai.IO;assembly=Bonsai.System"
+                 xmlns:orc="clr-namespace:OpenRigs.Core;assembly=OpenRigs.Core"
+                 xmlns:cal="clr-namespace:OpenRigs.Core.Calibration;assembly=OpenRigs.Core"
+                 xmlns:orcl="clr-namespace:OpenRigs.Control;assembly=OpenRigs.Control"
+                 xmlns:ext="clr-namespace:UclOpenCoenCalibrateValve;assembly=Extensions"
                  xmlns="https://bonsai-rx.org/2018/workflow">
+  <Description>Calibrates one reward valve on the behavior board: fires known pulse widths, weighs what each delivers on a serial balance, and writes the curve into calibration\ beside this machine's rig.yml, where the rig's experiment workflows read it. The board's port, its pulsed lines and each line's artefact come from that rig.yml; the procedure (pulse widths, repeats, the balance's protocol) from config\valve-calibration.yml; the balance's port from BalancePort. Ready once the board and the balance both answer; Go runs the procedure on the Line parameter's line; Finished once the artefact is written.</Description>
   <Workflow>
-    <Nodes />
-    <Edges />
+    <Nodes>
+      <Expression xsi:type="ExternalizedMapping">
+        <Property Name="ConfigRoot" DisplayName="ConfigRoot" Description="The root under which each machine has its own configuration directory, &lt;ConfigRoot&gt;\&lt;MACHINE-NAME&gt;\rig.yml." />
+      </Expression>
+      <Expression xsi:type="GroupWorkflow">
+        <Name>RigConfig</Name>
+        <Description>Reads &lt;ConfigRoot&gt;\&lt;MACHINE-NAME&gt;\rig.yml once and takes from it only the behavior board main: its port and its pulsed output lines (ValveRig), ignoring every other entry, so this reads the same rig.yml as the rig's experiment workflows. The directory is RigConfigDirectory, where the calibration writes its artefact. Also reads config\valve-calibration.yml into ValveCalibrationSettings. Fails at startup if the machine has no directory or rig.yml, or rig.yml has no behaviorBoard: main: with a portName.</Description>
+        <Workflow>
+          <Nodes>
+            <Expression xsi:type="ExternalizedMapping">
+              <Property Name="ConfigRoot" DisplayName="ConfigRoot" />
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="orc:ResolveRigConfigDirectory">
+                <orc:ConfigRoot>C:\Coen-Lab-Local\RigConfigs</orc:ConfigRoot>
+              </Combinator>
+            </Expression>
+            <Expression xsi:type="rx:AsyncSubject">
+              <Name>RigConfigDirectory</Name>
+            </Expression>
+            <Expression xsi:type="IncludeWorkflow" Path="OpenRigs.Core:ReadRigConfig.bonsai">
+              <FileName>rig.yml</FileName>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="ext:ReadValveRig">
+                <ext:BoardName>main</ext:BoardName>
+              </Combinator>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="rx:Take">
+                <rx:Count>1</rx:Count>
+              </Combinator>
+            </Expression>
+            <Expression xsi:type="rx:AsyncSubject">
+              <Name>ValveRig</Name>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="io:ReadAllText">
+                <io:Path>..\config\valve-calibration.yml</io:Path>
+              </Combinator>
+            </Expression>
+            <Expression xsi:type="cal:DeserializeFromYaml">
+              <cal:Type xsi:type="TypeMapping" TypeArguments="cal:DispenseCalibration" />
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="rx:Take">
+                <rx:Count>1</rx:Count>
+              </Combinator>
+            </Expression>
+            <Expression xsi:type="rx:AsyncSubject">
+              <Name>ValveCalibrationSettings</Name>
+            </Expression>
+          </Nodes>
+          <Edges>
+            <Edge From="0" To="1" Label="Source1" />
+            <Edge From="1" To="2" Label="Source1" />
+            <Edge From="2" To="3" Label="Source1" />
+            <Edge From="3" To="4" Label="Source1" />
+            <Edge From="4" To="5" Label="Source1" />
+            <Edge From="5" To="6" Label="Source1" />
+            <Edge From="7" To="8" Label="Source1" />
+            <Edge From="8" To="9" Label="Source1" />
+            <Edge From="9" To="10" Label="Source1" />
+          </Edges>
+        </Workflow>
+      </Expression>
+      <Expression xsi:type="ExternalizedMapping">
+        <Property Name="SubjectId" />
+        <Property Name="SessionId" />
+      </Expression>
+      <Expression xsi:type="GroupWorkflow">
+        <Name>Initialization</Name>
+        <Description>The experiment controller (OpenRigs.Control, ExperimentControl) over TCP 5561, which the rig agent relays. Line (the board line to calibrate, starting at rig.yml's first CalibratedPulse line) and Notes may change until Go. At Go the line is checked against rig.yml and published as CalibrationTarget: its channel, the artefact file (a CalibratedPulse line's own artefact, else valve-DO&lt;n&gt;), who pressed Go and the notes. A line rig.yml does not declare, or does not list in outputPulseEnable, stops the workflow saying so, before anything fires.</Description>
+        <Workflow>
+          <Nodes>
+            <Expression xsi:type="ExternalizedMapping">
+              <Property Name="SubjectId" />
+              <Property Name="SessionId" />
+            </Expression>
+            <Expression xsi:type="IncludeWorkflow" Path="OpenRigs.Control:ExperimentControl.bonsai">
+              <SubjectId />
+              <SessionId />
+              <ControlEndpoint>@tcp://127.0.0.1:5561</ControlEndpoint>
+              <Parameters>
+                <Parameter>
+                  <Name>Line</Name>
+                  <Value>1</Value>
+                  <Description>The behavior board line to calibrate, 1 to 3 (DO1 to DO3): one of rig.yml's pulseController outputs, listed in its outputPulseEnable. Starts at rig.yml's first CalibratedPulse line.</Description>
+                  <Minimum>1</Minimum>
+                  <Maximum>3</Maximum>
+                  <WholeNumber>true</WholeNumber>
+                </Parameter>
+                <Parameter>
+                  <Name>Notes</Name>
+                  <Value />
+                  <Description>Free text kept in the calibration, such as the balance and the container.</Description>
+                </Parameter>
+              </Parameters>
+              <Commands />
+            </Expression>
+            <Expression xsi:type="SubscribeSubject">
+              <Name>ExperimentGo</Name>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="orcl:ReportPhase">
+                <orcl:Phase>Recording</orcl:Phase>
+              </Combinator>
+            </Expression>
+            <Expression xsi:type="SubscribeSubject">
+              <Name>ValveRig</Name>
+            </Expression>
+            <Expression xsi:type="SubscribeSubject">
+              <Name>ExperimentGo</Name>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="orcl:ParameterValue">
+                <orcl:Name>Line</orcl:Name>
+              </Combinator>
+            </Expression>
+            <Expression xsi:type="SubscribeSubject">
+              <Name>ExperimentGo</Name>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="ext:GoByName" />
+            </Expression>
+            <Expression xsi:type="SubscribeSubject">
+              <Name>ExperimentGo</Name>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="orcl:ParameterValue">
+                <orcl:Name>Notes</orcl:Name>
+              </Combinator>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="rx:Zip" />
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="rx:Take">
+                <rx:Count>1</rx:Count>
+              </Combinator>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="ext:SelectValveLine" />
+            </Expression>
+            <Expression xsi:type="rx:AsyncSubject">
+              <Name>CalibrationTarget</Name>
+            </Expression>
+            <Expression xsi:type="SubscribeSubject">
+              <Name>CalibrationTarget</Name>
+            </Expression>
+            <Expression xsi:type="Format">
+              <Format>{0} into calibration/{1}.json</Format>
+              <Selector>Line,FileName</Selector>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="orcl:ReportMetric">
+                <orcl:Name>target</orcl:Name>
+              </Combinator>
+            </Expression>
+          </Nodes>
+          <Edges>
+            <Edge From="0" To="1" Label="Source1" />
+            <Edge From="2" To="3" Label="Source1" />
+            <Edge From="4" To="11" Label="Source1" />
+            <Edge From="5" To="6" Label="Source1" />
+            <Edge From="6" To="11" Label="Source2" />
+            <Edge From="7" To="8" Label="Source1" />
+            <Edge From="8" To="11" Label="Source3" />
+            <Edge From="9" To="10" Label="Source1" />
+            <Edge From="10" To="11" Label="Source4" />
+            <Edge From="11" To="12" Label="Source1" />
+            <Edge From="12" To="13" Label="Source1" />
+            <Edge From="13" To="14" Label="Source1" />
+            <Edge From="15" To="16" Label="Source1" />
+            <Edge From="16" To="17" Label="Source1" />
+          </Edges>
+        </Workflow>
+      </Expression>
+      <Expression xsi:type="ExternalizedMapping">
+        <Property Name="BalancePort" Description="The balance's serial port, such as COM5. Set at launch: the balance is plugged in only to calibrate." />
+      </Expression>
+      <Expression xsi:type="GroupWorkflow">
+        <Name>Hardware</Name>
+        <Description>The behavior board main from rig.yml (its port, and outputPulseEnable for the PulseController, whose TriggerCalibratedPulse fires one pulse of a given width on a line; no camera trigger runs, so DO1 stays a valve line) and the serial balance on BalancePort (OpenRigs.Devices SerialBalance, publishing BalanceReading, with the protocol of config\valve-calibration.yml). Reports Ready once the board has sent an event and the balance a reading, and the balance's weight every second as weight_g. Line starts at rig.yml's first CalibratedPulse line.</Description>
+        <Workflow>
+          <Nodes>
+            <Expression xsi:type="ExternalizedMapping">
+              <Property Name="PortName" DisplayName="BalancePort" />
+            </Expression>
+            <Expression xsi:type="SubscribeSubject">
+              <Name>ValveRig</Name>
+            </Expression>
+            <Expression xsi:type="PropertyMapping">
+              <PropertyMappings>
+                <Property Name="PortName" Selector="PortName" />
+                <Property Name="OutputPulseEnable" Selector="PulseEnable" />
+              </PropertyMappings>
+            </Expression>
+            <Expression xsi:type="GroupWorkflow">
+              <Name>BehaviorBoard</Name>
+              <Workflow>
+                <Nodes>
+                  <Expression xsi:type="ExternalizedMapping">
+                    <Property Name="PortName" />
+                  </Expression>
+                  <Expression xsi:type="IncludeWorkflow" Path="OpenRigs.Devices:BehaviorBoard.BehaviorBoard.bonsai">
+                    <CommandsSubjectName>BehaviorBoard-Main.Commands</CommandsSubjectName>
+                    <PortName>COMx</PortName>
+                    <DumpRegisters>true</DumpRegisters>
+                    <Heartbeat>Enabled</Heartbeat>
+                    <EventsSubjectName>BehaviorBoard-Main.Data</EventsSubjectName>
+                  </Expression>
+                  <Expression xsi:type="ExternalizedMapping">
+                    <Property Name="OutputPulseEnable" />
+                  </Expression>
+                  <Expression xsi:type="IncludeWorkflow" Path="OpenRigs.Devices:BehaviorBoard.PulseController.bonsai">
+                    <BehaviorCommandsSubjectName>BehaviorBoard-Main.Commands</BehaviorCommandsSubjectName>
+                    <OutputPulseEnable>DO1 DO2</OutputPulseEnable>
+                    <PulseDO1>10</PulseDO1>
+                    <PulseDO2>10</PulseDO2>
+                    <PulseDO3>10</PulseDO3>
+                    <BehaviorEventsSubjectName>BehaviorBoard-Main.Data</BehaviorEventsSubjectName>
+                    <TriggerPulseSubjectName>TriggerPulse</TriggerPulseSubjectName>
+                    <TriggerCalibratedPulseSubjectName>TriggerCalibratedPulse</TriggerCalibratedPulseSubjectName>
+                  </Expression>
+                </Nodes>
+                <Edges>
+                  <Edge From="0" To="1" Label="Source1" />
+                  <Edge From="2" To="3" Label="Source1" />
+                </Edges>
+              </Workflow>
+            </Expression>
+            <Expression xsi:type="SubscribeSubject">
+              <Name>ValveCalibrationSettings</Name>
+            </Expression>
+            <Expression xsi:type="MemberSelector">
+              <Selector>Balance</Selector>
+            </Expression>
+            <Expression xsi:type="SubscribeSubject">
+              <Name>ValveCalibrationSettings</Name>
+            </Expression>
+            <Expression xsi:type="PropertyMapping">
+              <PropertyMappings>
+                <Property Name="BaudRate" Selector="Balance.BaudRate" />
+              </PropertyMappings>
+            </Expression>
+            <Expression xsi:type="IncludeWorkflow" Path="OpenRigs.Devices:SerialBalance.bonsai">
+              <PortName>COMx</PortName>
+              <BaudRate>9600</BaudRate>
+              <ReadingsSubjectName>BalanceReading</ReadingsSubjectName>
+            </Expression>
+            <Expression xsi:type="SubscribeSubject">
+              <Name>BehaviorBoard-Main.Data</Name>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="rx:Take">
+                <rx:Count>1</rx:Count>
+              </Combinator>
+            </Expression>
+            <Expression xsi:type="SubscribeSubject">
+              <Name>BalanceReading</Name>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="rx:Take">
+                <rx:Count>1</rx:Count>
+              </Combinator>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="rx:Zip" />
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="orcl:ReportPhase">
+                <orcl:Phase>Ready</orcl:Phase>
+              </Combinator>
+            </Expression>
+            <Expression xsi:type="SubscribeSubject">
+              <Name>BalanceReading</Name>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="rx:SampleInterval">
+                <rx:Interval>PT1S</rx:Interval>
+              </Combinator>
+            </Expression>
+            <Expression xsi:type="MemberSelector">
+              <Selector>Value</Selector>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="orcl:ReportMetric">
+                <orcl:Name>weight_g</orcl:Name>
+              </Combinator>
+            </Expression>
+            <Expression xsi:type="SubscribeSubject">
+              <Name>ValveRig</Name>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="ext:DefaultValveLine" />
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="orcl:ParameterDefault">
+                <orcl:Name>Line</orcl:Name>
+              </Combinator>
+            </Expression>
+          </Nodes>
+          <Edges>
+            <Edge From="1" To="2" Label="Source1" />
+            <Edge From="2" To="3" Label="Source1" />
+            <Edge From="4" To="5" Label="Source1" />
+            <Edge From="5" To="8" Label="Source1" />
+            <Edge From="0" To="8" Label="Source2" />
+            <Edge From="6" To="7" Label="Source1" />
+            <Edge From="7" To="8" Label="Source3" />
+            <Edge From="9" To="10" Label="Source1" />
+            <Edge From="10" To="13" Label="Source1" />
+            <Edge From="11" To="12" Label="Source1" />
+            <Edge From="12" To="13" Label="Source2" />
+            <Edge From="13" To="14" Label="Source1" />
+            <Edge From="15" To="16" Label="Source1" />
+            <Edge From="16" To="17" Label="Source1" />
+            <Edge From="17" To="18" Label="Source1" />
+            <Edge From="19" To="20" Label="Source1" />
+            <Edge From="20" To="21" Label="Source1" />
+          </Edges>
+        </Workflow>
+      </Expression>
+      <Expression xsi:type="GroupWorkflow">
+        <Name>Calibration</Name>
+        <Description>At Go, once CalibrationTarget is set: OpenRigs.Core DispenseCalibration on that line, with the settings of config\valve-calibration.yml. It primes the line, weighs a baseline, fires each sample's pulses through TriggerCalibratedPulse and weighs each gain on BalanceReading, then writes calibration\&lt;FileName&gt;.json into RigConfigDirectory, with a dated copy in calibration\history\, refusing a curve that is not monotone. Reports the measured points as the points metric, then Finished.</Description>
+        <Workflow>
+          <Nodes>
+            <Expression xsi:type="SubscribeSubject">
+              <Name>CalibrationTarget</Name>
+            </Expression>
+            <Expression xsi:type="PropertyMapping">
+              <PropertyMappings>
+                <Property Name="Channel" Selector="Channel" />
+                <Property Name="FileName" Selector="FileName" />
+                <Property Name="CalibratedBy" Selector="CalibratedBy" />
+                <Property Name="Notes" Selector="Notes" />
+              </PropertyMappings>
+            </Expression>
+            <Expression xsi:type="SubscribeSubject">
+              <Name>CalibrationTarget</Name>
+            </Expression>
+            <Expression xsi:type="SubscribeSubject">
+              <Name>ValveCalibrationSettings</Name>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="rx:Zip" />
+            </Expression>
+            <Expression xsi:type="MemberSelector">
+              <Selector>Item2</Selector>
+            </Expression>
+            <Expression xsi:type="IncludeWorkflow" Path="OpenRigs.Core:DispenseCalibration.bonsai">
+              <Channel>1</Channel>
+              <RequestSubjectName>TriggerCalibratedPulse</RequestSubjectName>
+              <ReadingsSubjectName>BalanceReading</ReadingsSubjectName>
+              <DirectorySubjectName>RigConfigDirectory</DirectorySubjectName>
+              <CalibratedBy>unknown</CalibratedBy>
+              <Notes />
+              <FileName>valve-DO1</FileName>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="ext:DescribeCurve" />
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="orcl:ReportMetric">
+                <orcl:Name>points</orcl:Name>
+              </Combinator>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="orcl:ReportPhase">
+                <orcl:Phase>Finished</orcl:Phase>
+              </Combinator>
+            </Expression>
+          </Nodes>
+          <Edges>
+            <Edge From="0" To="1" Label="Source1" />
+            <Edge From="2" To="4" Label="Source1" />
+            <Edge From="3" To="4" Label="Source2" />
+            <Edge From="4" To="5" Label="Source1" />
+            <Edge From="5" To="6" Label="Source1" />
+            <Edge From="1" To="6" Label="Source2" />
+            <Edge From="6" To="7" Label="Source1" />
+            <Edge From="7" To="8" Label="Source1" />
+            <Edge From="8" To="9" Label="Source1" />
+          </Edges>
+        </Workflow>
+      </Expression>
+    </Nodes>
+    <Edges>
+      <Edge From="0" To="1" Label="Source1" />
+      <Edge From="2" To="3" Label="Source1" />
+      <Edge From="4" To="5" Label="Source1" />
+    </Edges>
   </Workflow>
 </WorkflowBuilder>
