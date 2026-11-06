@@ -1,9 +1,10 @@
 # Settings of the valve calibration (OpenRigs.Core DispenseCalibration), read at Start by
 # src\main.bonsai. The valve line, its artefact and the behavior board's port come from the rig's
-# own rig.yml, never from here. balance.portName stays COMx: the balance port is the workflow's
-# BalancePort property, set at launch, since the balance is plugged in only to calibrate. With
-# BalancePort manual (a balance read by eye) the balance block is unused, and settleWindow and
-# weighTimeoutS become 1 reading and an hour: each weight is typed when asked.
+# own rig.yml, through rig-control's launch, never from here. balance.portName stays COMx: the
+# balance port is the workflow's BalancePort property, set at launch, since the balance is plugged
+# in only to calibrate. With BalancePort manual (a balance read by eye, OpenRigs.Devices
+# ManualBalance) the rest of the balance block is unused, and settleWindow and weighTimeoutS
+# become 1 reading and an hour (OpenRigs.Core ApplyBalancePort): each weight is typed when asked.
 #
 # Each sample fires `repeats` pulses at `size` ms, then weighs the gain once the balance has given
 # settleWindow stable readings. Pick repeats so the gain per sample is at least 50 times the

@@ -1,34 +1,40 @@
 # coen-calibrate-valve
 
-Calibrates a reward valve on a Coen Lab rig: fires known pulse widths on one behavior board line, weighs what each delivers on a serial balance, and writes the curve (pulse width in ms against volume per pulse in µl) where the rig's experiment workflows read it. Built on the open-rigs dispense calibration (`OpenRigs.Core:DispenseCalibration.bonsai`, see open-rigs' `docs/articles/calibration.md`).
+Calibrates a reward valve on a Coen Lab rig. It fires known pulse widths on one behavior board line, weighs what each delivers, and writes the curve (pulse width in ms against volume per pulse in µl) where the rig's experiment workflows read it. It is built from the open-rigs dispense calibration (`OpenRigs.Core:DispenseCalibration.bonsai`, see open-rigs' `docs/articles/calibration.md`) and the lab's open-rigs packages, with no C# of its own.
 
 Run it from rig-control's Calibrations page. It is an open-rigs project under `ExperimentControl`, so rig-control launches, watches and stops it like any experiment.
 
-## What It Reads
+## What It Takes
 
-- **The rig's own rig.yml**, `<ConfigRoot>\<MACHINE-NAME>\rig.yml`, the file av-dome reads. Only `behaviorBoard: main:` is read: its `portName`, and `pulseController:` `outputPulseEnable` and `outputs:`. Every other entry is ignored, so one rig.yml serves the experiment and the calibration.
+- **Launch properties, from rig-control.** The Calibrations page reads the rig's own rig.yml (`<ConfigRoot>\<MACHINE-NAME>\rig.yml`, the file av-dome reads) and launches with:
+  - `PortName`: `behaviorBoard: main: portName`.
+  - `OutputPulseEnable`: its `pulseController: outputPulseEnable`, written with commas (`DO1, DO2`).
+  - `Channel`: the line's number.
+  - `FileName`: the line's artefact name. That is its own `artefact:` when rig.yml already calibrates it, else `valve-DO<n>`.
+  - `Notes`.
+  
+  The page refuses a line that `outputPulseEnable` does not list.
+- **`BalancePort`**, asked for on the page: the balance's COM port, since the balance is plugged in only to calibrate; or `manual` for a balance with no data port, read by eye (below).
 - **`config\valve-calibration.yml`**: the procedure (pulse widths, repeats, priming, settling, fit) and the balance's serial protocol. Committed, the same for every rig.
-- **`BalancePort`**, a launch property: the balance's COM port, since the balance is plugged in only to calibrate; or `manual` for a balance with no data port, read by eye (below). Empty stops the workflow at Start.
 
 ## A Balance Read by Eye
 
-With `BalancePort` `manual`, no serial balance opens. From Go, the workflow follows the procedure's bursts by the pulses it fires and, once each burst has landed, asks for a weight in the `weigh` metric: the baseline after priming, then each sample's. Read the balance and give the number in grams with **Enter Weight** (the `Weight` command). The next weight given is that burst's reading; one given when none is due, or text that is not a number, is refused in `weigh`, and the run waits. Each weighing waits up to an hour. Leave the container on the balance throughout: each sample is the difference from the one before.
+With `BalancePort` `manual`, the workflow runs `OpenRigs.Devices:ManualBalance.bonsai` in place of the serial balance. From Go it follows the procedure's bursts by the pulses fired. Once each burst has landed, it asks for a weight in the `weigh` metric: the baseline after priming, then each sample's. Read the balance and give the number in grams with **Enter Weight** (the `Weight` command). The next weight given is that burst's reading. A weight given when none is due, or text that is not a number, is refused in `weigh`, and the run waits. Each weighing waits up to an hour. Leave the container on the balance throughout: each sample is the difference from the one before.
 
 ## A Run
 
-1. Put a container on the balance under the spout, plug the balance in, launch with `BalancePort`.
-2. **Ready** once the board has answered and, for a serial balance, the balance has given a reading. `weight_g` shows the balance every second.
-3. Set **Line** (1 to 3; it starts at rig.yml's first `CalibratedPulse` line) and **Notes**, press **Go**. The line must be one of rig.yml's `outputs` and listed in `outputPulseEnable`, or the run stops there, before anything fires.
-4. The procedure primes the line, weighs a baseline, fires each sample's pulses and weighs each gain (`target` names the line and file).
-5. **Finished** once `calibration\<name>.json` is written beside rig.yml, with a dated copy in `calibration\history\`. `points` lists the volume per pulse at each width. A curve that is not monotone is refused and nothing is written.
+1. Put a container on the balance under the spout, plug the balance in, choose the line on the Calibrations page and press Calibrate.
+2. **Ready** once the board has answered and, for a serial balance, the balance has given a reading. `target` names the line and file; `weight_g` shows the balance every second.
+3. Press **Go**. The procedure primes the line, weighs a baseline, fires each sample's pulses and weighs each gain.
+4. **Finished** once `calibration\<FileName>.json` is written beside rig.yml, with a dated copy in `calibration\history\`. `points` lists the volume per pulse at each width. A curve that is not monotone is refused and nothing is written.
 
-The artefact's name is the line's own `artefact:` when rig.yml already has it as a `CalibratedPulse`, else `valve-DO<n>.json`. A line still set to `FixedPulse` keeps its fixed width until rig.yml points it at the artefact:
+A line still set to `FixedPulse` keeps its fixed width until rig.yml points it at the artefact:
 
 ```yaml
 DO1: { discriminatorType: CalibratedPulse, artefact: calibration/valve-DO1.json }
 ```
 
-`calibratedBy` is whoever pressed Go, as rig-control knows them from the Lab PIN.
+`calibratedBy` is whoever pressed Go, as rig-control knows them from the Lab PIN (OpenRigs.Control `GoByName`).
 
 ## Setup
 
