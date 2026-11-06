@@ -7,6 +7,7 @@
                  xmlns:cal="clr-namespace:OpenRigs.Core.Calibration;assembly=OpenRigs.Core"
                  xmlns:orcl="clr-namespace:OpenRigs.Control;assembly=OpenRigs.Control"
                  xmlns:lv="clr-namespace:OpenRigs.LiveView;assembly=OpenRigs.LiveView"
+                 xmlns:cv="clr-namespace:Bonsai.Vision;assembly=Bonsai.Vision"
                  xmlns="https://bonsai-rx.org/2018/workflow">
   <Description>Calibrates one reward valve on the behavior board: fires known pulse widths on one line, weighs what each delivers, and writes the curve into calibration\ beside this machine's rig.yml, where the rig's experiment workflows read it. rig-control's Calibrations page launches it with the line and the board as its rig.yml gives them (PortName, OutputPulseEnable, Channel, FileName) and Notes. The balance is read by eye: each weight is typed with the Weight command when the weigh metric asks for it. The procedure (pulse widths, repeats) is config\valve-calibration.yml. Ready once the board answers; Go runs the procedure; Finished once the artefact is written.</Description>
   <Workflow>
@@ -78,6 +79,10 @@
                 <Command>
                   <Name>Weight</Name>
                   <Description>The balance's reading, in grams, given when the weigh metric asks for it.</Description>
+                </Command>
+                <Command>
+                  <Name>Snapshot</Name>
+                  <Description>Saves the body camera's latest frame, full size, as calibration\images\&lt;text&gt;.jpg beside rig.yml: rig-control's Calibrations page reads the balance from it.</Description>
                 </Command>
               </Commands>
             </Expression>
@@ -393,6 +398,84 @@
         <lv:ConfigRoot>C:\Coen-Lab-Local\RigConfigs</lv:ConfigRoot>
         <lv:DataPort>5556</lv:DataPort>
         <lv:VideoPort>5558</lv:VideoPort>
+      </Expression>
+      <Expression xsi:type="GroupWorkflow">
+        <Name>Snapshots</Name>
+        <Description>Each Snapshot command saves the body camera's latest frame (Camera-Body.Data), full size, as &lt;RigConfigDirectory&gt;\calibration\images\&lt;the command's text&gt;.jpg, the folder made if need be. rig-control's Calibrations page asks for one once each weight is due and reads the balance's display from it, so no one types the weight. A Snapshot before the camera's first frame saves nothing. After LiveView, which streams nothing of it, so the nodes before it keep their places.</Description>
+        <Workflow>
+          <Nodes>
+            <Expression xsi:type="SubscribeSubject">
+              <Name>ControlEvents</Name>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="orcl:OnCommand">
+                <orcl:Name>Snapshot</orcl:Name>
+              </Combinator>
+            </Expression>
+            <Expression xsi:type="SubscribeSubject">
+              <Name>RigConfigDirectory</Name>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="rx:WithLatestFrom" />
+            </Expression>
+            <Expression xsi:type="Format">
+              <Format>{1}\calibration\images\{0}.jpg</Format>
+              <Selector>Item1,Item2</Selector>
+            </Expression>
+            <Expression xsi:type="SubscribeSubject">
+              <Name>Camera-Body.Data</Name>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="rx:WithLatestFrom" />
+            </Expression>
+            <Expression xsi:type="rx:SelectMany">
+              <Name>SaveStill</Name>
+              <Description>The frame saved to the path: the path mapped onto SaveImage's FileName before the frame reaches it.</Description>
+              <Workflow>
+                <Nodes>
+                  <Expression xsi:type="WorkflowInput">
+                    <Name>Source1</Name>
+                  </Expression>
+                  <Expression xsi:type="MemberSelector">
+                    <Selector>Item1</Selector>
+                  </Expression>
+                  <Expression xsi:type="PropertyMapping">
+                    <PropertyMappings>
+                      <Property Name="FileName" />
+                    </PropertyMappings>
+                  </Expression>
+                  <Expression xsi:type="MemberSelector">
+                    <Selector>Item2.Value.Image</Selector>
+                  </Expression>
+                  <Expression xsi:type="Combinator">
+                    <Combinator xsi:type="cv:SaveImage">
+                      <cv:FileName>snapshot.jpg</cv:FileName>
+                      <cv:Suffix>None</cv:Suffix>
+                    </Combinator>
+                  </Expression>
+                  <Expression xsi:type="WorkflowOutput" />
+                </Nodes>
+                <Edges>
+                  <Edge From="0" To="1" Label="Source1" />
+                  <Edge From="1" To="2" Label="Source1" />
+                  <Edge From="0" To="3" Label="Source1" />
+                  <Edge From="3" To="4" Label="Source1" />
+                  <Edge From="2" To="4" Label="Source2" />
+                  <Edge From="4" To="5" Label="Source1" />
+                </Edges>
+              </Workflow>
+            </Expression>
+          </Nodes>
+          <Edges>
+            <Edge From="0" To="1" Label="Source1" />
+            <Edge From="1" To="3" Label="Source1" />
+            <Edge From="2" To="3" Label="Source2" />
+            <Edge From="3" To="4" Label="Source1" />
+            <Edge From="4" To="6" Label="Source1" />
+            <Edge From="5" To="6" Label="Source2" />
+            <Edge From="6" To="7" Label="Source1" />
+          </Edges>
+        </Workflow>
       </Expression>
     </Nodes>
     <Edges>

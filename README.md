@@ -20,6 +20,10 @@ Run it from rig-control's Calibrations page, the only place it is offered: it is
 
 The balance is read by eye: the workflow runs `OpenRigs.Devices:ManualBalance.bonsai`, and nothing is plugged into the computer. From Start it follows the procedure's bursts by the pulses fired. Once each burst has landed, it asks for a weight in the `weigh` metric: the baseline after priming, then each sample's. The Calibrations page shows that prompt in a band, which turns amber with its box highlighted while a weight is due: read the balance, type the number in grams and press Enter (the `Weight` command). The next weight given is that burst's reading. A weight given when none is due, or text that is not a number, is refused in `weigh`, and the run waits. Each weighing waits up to an hour. Leave the container on the balance throughout: each sample is the difference from the one before.
 
+## The Balance, Read from the Camera
+
+The body camera can see the balance's display, so rig-control's Calibrations page reads the weights itself (branch `pip/computer-vision`). Each `Snapshot` command (its text a file name) saves the camera's latest frame, full size, as `calibration\images\<text>.jpg` beside rig.yml. The page asks for one once each weight is due, reads the display from it and sends the number with `Weight`, as a person would. The workflow does not know who read it. See rig-control's README for the reading, its checks and the review at the end.
+
 ## A Run
 
 1. On the Calibrations page, press the line's **Go** and give your Lab PIN.
