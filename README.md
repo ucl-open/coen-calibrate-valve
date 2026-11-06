@@ -13,19 +13,18 @@ Run it from rig-control's Calibrations page. It is an open-rigs project under `E
   - `FileName`: the line's artefact name. That is its own `artefact:` when rig.yml already calibrates it, else `valve-DO<n>`.
   - `Notes`.
   
-  The page refuses a line that `outputPulseEnable` does not list.
-- **`BalancePort`**, asked for on the page: the balance's COM port, since the balance is plugged in only to calibrate; or `manual` for a balance with no data port, read by eye (below).
-- **`config\valve-calibration.yml`**: the procedure (pulse widths, repeats, priming, settling, fit) and the balance's serial protocol. Committed, the same for every rig.
+  The page refuses a line that `outputPulseEnable` does not list, or that rig.yml gives another job (the domes' DO3, the Zapit TTL).
+- **`config\valve-calibration.yml`**: the procedure (pulse widths, repeats, priming, fit, and how long each weighing waits). Committed, the same for every rig.
 
-## A Balance Read by Eye
+## The Balance, Read by Eye
 
-With `BalancePort` `manual`, the workflow runs `OpenRigs.Devices:ManualBalance.bonsai` in place of the serial balance. From Go it follows the procedure's bursts by the pulses fired. Once each burst has landed, it asks for a weight in the `weigh` metric: the baseline after priming, then each sample's. Read the balance and give the number in grams with **Enter Weight** (the `Weight` command). The next weight given is that burst's reading. A weight given when none is due, or text that is not a number, is refused in `weigh`, and the run waits. Each weighing waits up to an hour. Leave the container on the balance throughout: each sample is the difference from the one before.
+The balance is read by eye: the workflow runs `OpenRigs.Devices:ManualBalance.bonsai`, and nothing is plugged into the computer. From Go it follows the procedure's bursts by the pulses fired. Once each burst has landed, it asks for a weight in the `weigh` metric: the baseline after priming, then each sample's. Read the balance and give the number in grams with **Enter Weight** (the `Weight` command). The next weight given is that burst's reading. A weight given when none is due, or text that is not a number, is refused in `weigh`, and the run waits. Each weighing waits up to an hour. Leave the container on the balance throughout: each sample is the difference from the one before.
 
 ## A Run
 
-1. Put a container on the balance under the spout, plug the balance in, choose the line on the Calibrations page and press Calibrate.
-2. **Ready** once the board has answered and, for a serial balance, the balance has given a reading. `target` names the line and file; `weight_g` shows the balance every second.
-3. Press **Go**. The procedure primes the line, weighs a baseline, fires each sample's pulses and weighs each gain.
+1. Put a container on the balance under the spout, choose the line on the Calibrations page and press Calibrate.
+2. **Ready** once the board has answered. `target` names the line and file.
+3. Press **Go**. The procedure primes the line, asks for the baseline weight, fires each sample's pulses and asks for each weight.
 4. **Finished** once `calibration\<FileName>.json` is written beside rig.yml, with a dated copy in `calibration\history\`. `points` lists the volume per pulse at each width. A curve that is not monotone is refused and nothing is written.
 
 A line still set to `FixedPulse` keeps its fixed width until rig.yml points it at the artefact:

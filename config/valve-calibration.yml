@@ -1,14 +1,12 @@
 # Settings of the valve calibration (OpenRigs.Core DispenseCalibration), read at Start by
 # src\main.bonsai. The valve line, its artefact and the behavior board's port come from the rig's
-# own rig.yml, through rig-control's launch, never from here. balance.portName stays COMx: the
-# balance port is the workflow's BalancePort property, set at launch, since the balance is plugged
-# in only to calibrate. With BalancePort manual (a balance read by eye, OpenRigs.Devices
-# ManualBalance) the rest of the balance block is unused, and settleWindow and weighTimeoutS
-# become 1 reading and an hour (OpenRigs.Core ApplyBalancePort): each weight is typed when asked.
+# own rig.yml, through rig-control's launch, never from here.
 #
-# Each sample fires `repeats` pulses at `size` ms, then weighs the gain once the balance has given
-# settleWindow stable readings. Pick repeats so the gain per sample is at least 50 times the
-# balance's last digit: on a 1 mg balance, 25 pulses of about 2 ul weigh about 50 mg.
+# The balance is read by eye (OpenRigs.Devices ManualBalance): after each burst the run asks for the
+# weight and waits up to weighTimeoutS for it to be typed, taking that one reading (settleWindow 1).
+# Each sample fires `repeats` pulses at `size` ms, then weighs the gain. Pick repeats so the gain
+# per sample is at least 50 times the balance's last digit: on a 1 mg balance, 25 pulses of about
+# 2 ul weigh about 50 mg.
 procedure:
   samples:
     - { size: 10, repeats: 25, interPulseIntervalMs: 500 }
@@ -20,19 +18,8 @@ procedure:
   xUnit: ms
   primingPulses: 5
   densityGPerMl: 1.0
-  settleWindow: 10
-  weighTimeoutS: 60
+  settleWindow: 1
+  weighTimeoutS: 3600
   fit: LinearFit
   fitOrder: 2
   requireMonotone: true
-balance:
-  portName: COMx
-  baudRate: 9600
-  tareCommand: T
-  printCommand: IP
-  printPeriodS: 0.5
-  bootDelayS: 0.5
-  tareDelayS: 1.5
-  unitSuffix: g
-  unstableMarker: "?"
-  ignore: ES

@@ -3,21 +3,19 @@
                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                  xmlns:rx="clr-namespace:Bonsai.Reactive;assembly=Bonsai.Core"
                  xmlns:io="clr-namespace:Bonsai.IO;assembly=Bonsai.System"
-                 xmlns:sys="clr-namespace:System;assembly=mscorlib"
                  xmlns:orc="clr-namespace:OpenRigs.Core;assembly=OpenRigs.Core"
                  xmlns:cal="clr-namespace:OpenRigs.Core.Calibration;assembly=OpenRigs.Core"
                  xmlns:orcl="clr-namespace:OpenRigs.Control;assembly=OpenRigs.Control"
                  xmlns="https://bonsai-rx.org/2018/workflow">
-  <Description>Calibrates one reward valve on the behavior board: fires known pulse widths on one line, weighs what each delivers, and writes the curve into calibration\ beside this machine's rig.yml, where the rig's experiment workflows read it. rig-control's Calibrations page launches it with the line and the board as its rig.yml gives them (PortName, OutputPulseEnable, Channel, FileName), the balance (BalancePort: a COM port, or manual for one read by eye, each weight then typed with the Weight command when the weigh metric asks for it) and Notes. The procedure (pulse widths, repeats, the balance's protocol) is config\valve-calibration.yml. Ready once the board and the balance answer; Go runs the procedure; Finished once the artefact is written.</Description>
+  <Description>Calibrates one reward valve on the behavior board: fires known pulse widths on one line, weighs what each delivers, and writes the curve into calibration\ beside this machine's rig.yml, where the rig's experiment workflows read it. rig-control's Calibrations page launches it with the line and the board as its rig.yml gives them (PortName, OutputPulseEnable, Channel, FileName) and Notes. The balance is read by eye: each weight is typed with the Weight command when the weigh metric asks for it. The procedure (pulse widths, repeats) is config\valve-calibration.yml. Ready once the board answers; Go runs the procedure; Finished once the artefact is written.</Description>
   <Workflow>
     <Nodes>
       <Expression xsi:type="ExternalizedMapping">
         <Property Name="ConfigRoot" DisplayName="ConfigRoot" Description="The root under which each machine has its own configuration directory, &lt;ConfigRoot&gt;\&lt;MACHINE-NAME&gt;\rig.yml; the artefact is written into calibration\ there." />
-        <Property Name="BalancePort" DisplayName="BalancePort" Description="The balance: its serial port, such as COM5, for a balance the computer reads; or manual, for one read by eye, each weight typed when asked. Set at launch: the balance is plugged in only to calibrate." />
       </Expression>
       <Expression xsi:type="GroupWorkflow">
         <Name>Settings</Name>
-        <Description>RigConfigDirectory is &lt;ConfigRoot&gt;\&lt;MACHINE-NAME&gt;, where the calibration writes its artefact. ValveCalibrationSettings is config\valve-calibration.yml with the balance port BalancePort gives (OpenRigs.Core ApplyBalancePort): a COM port, or manual, which makes each weighing take the one weight typed and wait up to an hour for it. Fails at startup if the machine has no configuration directory or BalancePort is empty.</Description>
+        <Description>RigConfigDirectory is &lt;ConfigRoot&gt;\&lt;MACHINE-NAME&gt;, where the calibration writes its artefact. ValveCalibrationSettings is config\valve-calibration.yml. Fails at startup if the machine has no configuration directory.</Description>
         <Workflow>
           <Nodes>
             <Expression xsi:type="ExternalizedMapping">
@@ -44,27 +42,6 @@
                 <rx:Count>1</rx:Count>
               </Combinator>
             </Expression>
-            <Expression xsi:type="ExternalizedMapping">
-              <Property Name="Value" DisplayName="BalancePort" />
-            </Expression>
-            <Expression xsi:type="Combinator">
-              <Combinator xsi:type="StringProperty">
-                <Value />
-              </Combinator>
-            </Expression>
-            <Expression xsi:type="Combinator">
-              <Combinator xsi:type="rx:Take">
-                <rx:Count>1</rx:Count>
-              </Combinator>
-            </Expression>
-            <Expression xsi:type="Combinator">
-              <Combinator xsi:type="rx:Zip" />
-            </Expression>
-            <Expression xsi:type="Combinator">
-              <Combinator xsi:type="cal:ApplyBalancePort">
-                <cal:ManualTimeoutSeconds>3600</cal:ManualTimeoutSeconds>
-              </Combinator>
-            </Expression>
             <Expression xsi:type="rx:AsyncSubject">
               <Name>ValveCalibrationSettings</Name>
             </Expression>
@@ -74,12 +51,7 @@
             <Edge From="1" To="2" Label="Source1" />
             <Edge From="3" To="4" Label="Source1" />
             <Edge From="4" To="5" Label="Source1" />
-            <Edge From="5" To="9" Label="Source1" />
-            <Edge From="6" To="7" Label="Source1" />
-            <Edge From="7" To="8" Label="Source1" />
-            <Edge From="8" To="9" Label="Source2" />
-            <Edge From="9" To="10" Label="Source1" />
-            <Edge From="10" To="11" Label="Source1" />
+            <Edge From="5" To="6" Label="Source1" />
           </Edges>
         </Workflow>
       </Expression>
@@ -89,7 +61,7 @@
       </Expression>
       <Expression xsi:type="GroupWorkflow">
         <Name>Initialization</Name>
-        <Description>The experiment controller (OpenRigs.Control, ExperimentControl) over TCP 5561, which the rig agent relays. Weight takes each typed weight of a manual balance. Reports Recording at Go.</Description>
+        <Description>The experiment controller (OpenRigs.Control, ExperimentControl) over TCP 5561, which the rig agent relays. Weight takes each weight read off the balance. Reports Recording at Go.</Description>
         <Workflow>
           <Nodes>
             <Expression xsi:type="ExternalizedMapping">
@@ -104,7 +76,7 @@
               <Commands>
                 <Command>
                   <Name>Weight</Name>
-                  <Description>A manual balance's reading, in grams, given when the weigh metric asks for it (BalancePort manual only).</Description>
+                  <Description>The balance's reading, in grams, given when the weigh metric asks for it.</Description>
                 </Command>
               </Commands>
             </Expression>
@@ -129,7 +101,7 @@
       </Expression>
       <Expression xsi:type="GroupWorkflow">
         <Name>Hardware</Name>
-        <Description>The behavior board on PortName, with the PulseController pulsing the OutputPulseEnable lines: its TriggerCalibratedPulse fires one pulse of a given width on a line, as in a session. No camera trigger runs, so DO1 stays a valve line. The balance publishes BalanceReading. A COM port: OpenRigs.Devices SerialBalance, with the protocol of config\valve-calibration.yml, Ready once the board has sent an event and the balance a reading. manual: OpenRigs.Devices ManualBalance, which from Go asks for each weight in the weigh metric and takes it from the Weight command, Ready once the board has sent an event. Reports the balance's weight every second as weight_g.</Description>
+        <Description>The behavior board on PortName, with the PulseController pulsing the OutputPulseEnable lines: its TriggerCalibratedPulse fires one pulse of a given width on a line, as in a session. No camera trigger runs, so DO1 stays a valve line. The balance is read by eye (OpenRigs.Devices ManualBalance): from Go it asks for each weight in the weigh metric and publishes the one given with the Weight command on BalanceReading. Ready once the board has sent an event.</Description>
         <Workflow>
           <Nodes>
             <Expression xsi:type="ExternalizedMapping">
@@ -161,129 +133,9 @@
             <Expression xsi:type="SubscribeSubject">
               <Name>ValveCalibrationSettings</Name>
             </Expression>
-            <Expression xsi:type="rx:Condition">
-              <Name>IsSerial</Name>
-              <Workflow>
-                <Nodes>
-                  <Expression xsi:type="WorkflowInput">
-                    <Name>Source1</Name>
-                  </Expression>
-                  <Expression xsi:type="MemberSelector">
-                    <Selector>Balance.PortName</Selector>
-                  </Expression>
-                  <Expression xsi:type="NotEqual">
-                    <Operand xsi:type="WorkflowProperty" TypeArguments="sys:String">
-                      <Value>manual</Value>
-                    </Operand>
-                  </Expression>
-                  <Expression xsi:type="WorkflowOutput" />
-                </Nodes>
-                <Edges>
-                  <Edge From="0" To="1" Label="Source1" />
-                  <Edge From="1" To="2" Label="Source1" />
-                  <Edge From="2" To="3" Label="Source1" />
-                </Edges>
-              </Workflow>
-            </Expression>
-            <Expression xsi:type="rx:SelectMany">
-              <Name>SerialBalance</Name>
-              <Description>A balance the computer reads, on the settings' balance port: its readings forwarded to BalanceReading. Ready once the board has sent an event and the balance a reading.</Description>
-              <Workflow>
-                <Nodes>
-                  <Expression xsi:type="WorkflowInput">
-                    <Name>Source1</Name>
-                  </Expression>
-                  <Expression xsi:type="MemberSelector">
-                    <Selector>Balance</Selector>
-                  </Expression>
-                  <Expression xsi:type="PropertyMapping">
-                    <PropertyMappings>
-                      <Property Name="PortName" Selector="PortName" />
-                      <Property Name="BaudRate" Selector="BaudRate" />
-                    </PropertyMappings>
-                  </Expression>
-                  <Expression xsi:type="IncludeWorkflow" Path="OpenRigs.Devices:SerialBalance.bonsai">
-                    <PortName>COMx</PortName>
-                    <BaudRate>9600</BaudRate>
-                    <ReadingsSubjectName>SerialReading</ReadingsSubjectName>
-                  </Expression>
-                  <Expression xsi:type="SubscribeSubject">
-                    <Name>SerialReading</Name>
-                  </Expression>
-                  <Expression xsi:type="MulticastSubject">
-                    <Name>BalanceReading</Name>
-                  </Expression>
-                  <Expression xsi:type="SubscribeSubject">
-                    <Name>BehaviorBoard-Main.Data</Name>
-                  </Expression>
-                  <Expression xsi:type="Combinator">
-                    <Combinator xsi:type="rx:Take">
-                      <rx:Count>1</rx:Count>
-                    </Combinator>
-                  </Expression>
-                  <Expression xsi:type="SubscribeSubject">
-                    <Name>SerialReading</Name>
-                  </Expression>
-                  <Expression xsi:type="Combinator">
-                    <Combinator xsi:type="rx:Take">
-                      <rx:Count>1</rx:Count>
-                    </Combinator>
-                  </Expression>
-                  <Expression xsi:type="Combinator">
-                    <Combinator xsi:type="rx:Zip" />
-                  </Expression>
-                  <Expression xsi:type="Combinator">
-                    <Combinator xsi:type="orcl:ReportPhase">
-                      <orcl:Phase>Ready</orcl:Phase>
-                    </Combinator>
-                  </Expression>
-                  <Expression xsi:type="WorkflowOutput" />
-                </Nodes>
-                <Edges>
-                  <Edge From="0" To="1" Label="Source1" />
-                  <Edge From="1" To="2" Label="Source1" />
-                  <Edge From="1" To="3" Label="Source1" />
-                  <Edge From="2" To="3" Label="Source2" />
-                  <Edge From="4" To="5" Label="Source1" />
-                  <Edge From="6" To="7" Label="Source1" />
-                  <Edge From="7" To="10" Label="Source1" />
-                  <Edge From="8" To="9" Label="Source1" />
-                  <Edge From="9" To="10" Label="Source2" />
-                  <Edge From="10" To="11" Label="Source1" />
-                  <Edge From="5" To="12" Label="Source1" />
-                </Edges>
-              </Workflow>
-            </Expression>
-            <Expression xsi:type="SubscribeSubject">
-              <Name>ValveCalibrationSettings</Name>
-            </Expression>
-            <Expression xsi:type="rx:Condition">
-              <Name>IsManual</Name>
-              <Workflow>
-                <Nodes>
-                  <Expression xsi:type="WorkflowInput">
-                    <Name>Source1</Name>
-                  </Expression>
-                  <Expression xsi:type="MemberSelector">
-                    <Selector>Balance.PortName</Selector>
-                  </Expression>
-                  <Expression xsi:type="Equal">
-                    <Operand xsi:type="WorkflowProperty" TypeArguments="sys:String">
-                      <Value>manual</Value>
-                    </Operand>
-                  </Expression>
-                  <Expression xsi:type="WorkflowOutput" />
-                </Nodes>
-                <Edges>
-                  <Edge From="0" To="1" Label="Source1" />
-                  <Edge From="1" To="2" Label="Source1" />
-                  <Edge From="2" To="3" Label="Source1" />
-                </Edges>
-              </Workflow>
-            </Expression>
             <Expression xsi:type="rx:SelectMany">
               <Name>ManualBalance</Name>
-              <Description>A balance read by eye (BalancePort manual), OpenRigs.Devices ManualBalance. From Go it follows the procedure's bursts by the pulses fired and, once each has landed, asks for a weight in the weigh metric; the next weight typed with the Weight command is forwarded to BalanceReading as that burst's reading. Ready once the board has sent an event.</Description>
+              <Description>A balance read by eye, OpenRigs.Devices ManualBalance. From Go it follows the procedure's bursts by the pulses fired and, once each has landed, asks for a weight in the weigh metric; the next weight typed with the Weight command is forwarded to BalanceReading as that burst's reading. Ready once the board has sent an event.</Description>
               <Workflow>
                 <Nodes>
                   <Expression xsi:type="WorkflowInput">
@@ -358,33 +210,11 @@
                 </Edges>
               </Workflow>
             </Expression>
-            <Expression xsi:type="SubscribeSubject">
-              <Name>BalanceReading</Name>
-            </Expression>
-            <Expression xsi:type="Combinator">
-              <Combinator xsi:type="rx:SampleInterval">
-                <rx:Interval>PT1S</rx:Interval>
-              </Combinator>
-            </Expression>
-            <Expression xsi:type="MemberSelector">
-              <Selector>Value</Selector>
-            </Expression>
-            <Expression xsi:type="Combinator">
-              <Combinator xsi:type="orcl:ReportMetric">
-                <orcl:Name>weight_g</orcl:Name>
-              </Combinator>
-            </Expression>
           </Nodes>
           <Edges>
             <Edge From="0" To="1" Label="Source1" />
             <Edge From="2" To="3" Label="Source1" />
             <Edge From="5" To="6" Label="Source1" />
-            <Edge From="6" To="7" Label="Source1" />
-            <Edge From="8" To="9" Label="Source1" />
-            <Edge From="9" To="10" Label="Source1" />
-            <Edge From="11" To="12" Label="Source1" />
-            <Edge From="12" To="13" Label="Source1" />
-            <Edge From="13" To="14" Label="Source1" />
           </Edges>
         </Workflow>
       </Expression>
