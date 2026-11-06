@@ -8,12 +8,16 @@ Run it from rig-control's Calibrations page. It is an open-rigs project under `E
 
 - **The rig's own rig.yml**, `<ConfigRoot>\<MACHINE-NAME>\rig.yml`, the file av-dome reads. Only `behaviorBoard: main:` is read: its `portName`, and `pulseController:` `outputPulseEnable` and `outputs:`. Every other entry is ignored, so one rig.yml serves the experiment and the calibration.
 - **`config\valve-calibration.yml`**: the procedure (pulse widths, repeats, priming, settling, fit) and the balance's serial protocol. Committed, the same for every rig.
-- **`BalancePort`**, a launch property: the balance's COM port, since the balance is plugged in only to calibrate.
+- **`BalancePort`**, a launch property: the balance's COM port, since the balance is plugged in only to calibrate; or `manual` for a balance with no data port, read by eye (below). Empty stops the workflow at Start.
+
+## A Balance Read by Eye
+
+With `BalancePort` `manual`, no serial balance opens. From Go, the workflow follows the procedure's bursts by the pulses it fires and, once each burst has landed, asks for a weight in the `weigh` metric: the baseline after priming, then each sample's. Read the balance and give the number in grams with **Enter Weight** (the `Weight` command). The next weight given is that burst's reading; one given when none is due, or text that is not a number, is refused in `weigh`, and the run waits. Each weighing waits up to an hour. Leave the container on the balance throughout: each sample is the difference from the one before.
 
 ## A Run
 
 1. Put a container on the balance under the spout, plug the balance in, launch with `BalancePort`.
-2. **Ready** once the board has answered and the balance has given a reading. `weight_g` shows the balance every second.
+2. **Ready** once the board has answered and, for a serial balance, the balance has given a reading. `weight_g` shows the balance every second.
 3. Set **Line** (1 to 3; it starts at rig.yml's first `CalibratedPulse` line) and **Notes**, press **Go**. The line must be one of rig.yml's `outputs` and listed in `outputPulseEnable`, or the run stops there, before anything fires.
 4. The procedure primes the line, weighs a baseline, fires each sample's pulses and weighs each gain (`target` names the line and file).
 5. **Finished** once `calibration\<name>.json` is written beside rig.yml, with a dated copy in `calibration\history\`. `points` lists the volume per pulse at each width. A curve that is not monotone is refused and nothing is written.
