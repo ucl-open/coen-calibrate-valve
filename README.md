@@ -11,6 +11,7 @@ Run it from rig-control's Calibrations page, the only place it is offered: it is
   - `OutputPulseEnable`: its `pulseController: outputPulseEnable`, written with commas (`DO1, DO2`).
   - `Channel`: the line's number.
   - `FileName`: the line's artefact name. That is its own `artefact:` when rig.yml already calibrates it, else `valve-DO<n>`.
+  - `CameraSerialNumber`, `CameraExposureTime`: `camera: body:`'s, and `CameraFrequency`: `cameraTriggerController: trigger0Frequency`. The body camera runs on camera trigger 0 (DO0) and is streamed by `OpenRigs.LiveView` (5558) for the Calibrations page to show live; nothing is recorded. Trigger 1 stays off, so DO1 stays a valve line.
   
   `Notes` (free text kept in the curve) is taken only from a run in the Bonsai editor; the page sends none. The page refuses a line that `outputPulseEnable` does not list, and does not show one rig.yml gives another job (the domes' DO3, the Zapit TTL).
 - **`config\valve-calibration.yml`**: the procedure (pulse widths, repeats, priming, fit, and how long each weighing waits). Committed, the same for every rig.

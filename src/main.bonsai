@@ -6,6 +6,7 @@
                  xmlns:orc="clr-namespace:OpenRigs.Core;assembly=OpenRigs.Core"
                  xmlns:cal="clr-namespace:OpenRigs.Core.Calibration;assembly=OpenRigs.Core"
                  xmlns:orcl="clr-namespace:OpenRigs.Control;assembly=OpenRigs.Control"
+                 xmlns:lv="clr-namespace:OpenRigs.LiveView;assembly=OpenRigs.LiveView"
                  xmlns="https://bonsai-rx.org/2018/workflow">
   <Description>Calibrates one reward valve on the behavior board: fires known pulse widths on one line, weighs what each delivers, and writes the curve into calibration\ beside this machine's rig.yml, where the rig's experiment workflows read it. rig-control's Calibrations page launches it with the line and the board as its rig.yml gives them (PortName, OutputPulseEnable, Channel, FileName) and Notes. The balance is read by eye: each weight is typed with the Weight command when the weigh metric asks for it. The procedure (pulse widths, repeats) is config\valve-calibration.yml. Ready once the board answers; Go runs the procedure; Finished once the artefact is written.</Description>
   <Workflow>
@@ -98,10 +99,13 @@
       <Expression xsi:type="ExternalizedMapping">
         <Property Name="PortName" DisplayName="PortName" Description="The behavior board's serial port: rig.yml's behaviorBoard: main: portName, which rig-control gives at launch." />
         <Property Name="OutputPulseEnable" DisplayName="OutputPulseEnable" Description="The board lines that pulse, such as DO1, DO2: rig.yml's pulseController outputPulseEnable, which rig-control gives at launch." />
+        <Property Name="CameraSerialNumber" DisplayName="CameraSerialNumber" Description="The camera shown live while calibrating: rig.yml's camera: body: serialNumber, which rig-control gives at launch." />
+        <Property Name="CameraExposureTime" DisplayName="CameraExposureTime" Description="That camera's exposure in microseconds: rig.yml's camera: body: exposureTime, which rig-control gives at launch." />
+        <Property Name="CameraFrequency" DisplayName="CameraFrequency" Description="The camera trigger's rate in Hz (trigger 0, the DO0 pin): rig.yml's cameraTriggerController trigger0Frequency, which rig-control gives at launch." />
       </Expression>
       <Expression xsi:type="GroupWorkflow">
         <Name>Hardware</Name>
-        <Description>The behavior board on PortName, with the PulseController pulsing the OutputPulseEnable lines: its TriggerCalibratedPulse fires one pulse of a given width on a line, as in a session. No camera trigger runs, so DO1 stays a valve line. The balance is read by eye (OpenRigs.Devices ManualBalance): from Go it asks for each weight in the weigh metric and publishes the one given with the Weight command on BalanceReading. Ready once the board has sent an event.</Description>
+        <Description>The behavior board on PortName, with the PulseController pulsing the OutputPulseEnable lines: its TriggerCalibratedPulse fires one pulse of a given width on a line, as in a session. The balance is read by eye (OpenRigs.Devices ManualBalance): from Go it asks for each weight in the weigh metric and publishes the one given with the Weight command on BalanceReading. Ready once the board has sent an event. The body camera (CameraSerialNumber, CameraExposureTime) runs on camera trigger 0 (DO0, at CameraFrequency), started 2 s in, publishing Camera-Body.Data for the live view only: nothing is recorded. Trigger 1 stays off, so DO1 stays a valve line.</Description>
         <Workflow>
           <Nodes>
             <Expression xsi:type="ExternalizedMapping">
@@ -210,11 +214,54 @@
                 </Edges>
               </Workflow>
             </Expression>
+            <Expression xsi:type="ExternalizedMapping">
+              <Property Name="Trigger0Frequency" DisplayName="CameraFrequency" />
+            </Expression>
+            <Expression xsi:type="IncludeWorkflow" Path="OpenRigs.Devices:BehaviorBoard.CameraTriggerController.bonsai">
+              <EnableTrigger0>true</EnableTrigger0>
+              <EnableTrigger1>false</EnableTrigger1>
+              <Trigger0Frequency>50</Trigger0Frequency>
+              <Trigger1Frequency>50</Trigger1Frequency>
+              <BehaviorCommandsSubjectName>BehaviorBoard-Main.Commands</BehaviorCommandsSubjectName>
+              <BehaviorEventsSubjectName>BehaviorBoard-Main.Data</BehaviorEventsSubjectName>
+              <Camera0TriggerEventsSubjectName>Camera0TriggerEvents</Camera0TriggerEventsSubjectName>
+              <Camera1TriggerEventsSubjectName>Camera1TriggerEvents</Camera1TriggerEventsSubjectName>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="BooleanProperty">
+                <Value>true</Value>
+              </Combinator>
+            </Expression>
+            <Expression xsi:type="Combinator">
+              <Combinator xsi:type="rx:Delay">
+                <rx:DueTime>PT2S</rx:DueTime>
+              </Combinator>
+            </Expression>
+            <Expression xsi:type="MulticastSubject">
+              <Name>StartCameras</Name>
+            </Expression>
+            <Expression xsi:type="ExternalizedMapping">
+              <Property Name="SerialNumber" DisplayName="CameraSerialNumber" />
+              <Property Name="ExposureTime" DisplayName="CameraExposureTime" />
+            </Expression>
+            <Expression xsi:type="IncludeWorkflow" Path="OpenRigs.Devices:TriggeredSpinnaker.bonsai">
+              <ExposureTime>19000</ExposureTime>
+              <Gain>0</Gain>
+              <Binning>1</Binning>
+              <SerialNumber>00000000</SerialNumber>
+              <ColorProcessing>Default</ColorProcessing>
+              <CameraTriggerEventsSubjectName>Camera0TriggerEvents</CameraTriggerEventsSubjectName>
+              <FrameEventsSubjectName>Camera-Body.Data</FrameEventsSubjectName>
+            </Expression>
           </Nodes>
           <Edges>
             <Edge From="0" To="1" Label="Source1" />
             <Edge From="2" To="3" Label="Source1" />
             <Edge From="5" To="6" Label="Source1" />
+            <Edge From="7" To="8" Label="Source1" />
+            <Edge From="9" To="10" Label="Source1" />
+            <Edge From="10" To="11" Label="Source1" />
+            <Edge From="12" To="13" Label="Source1" />
           </Edges>
         </Workflow>
       </Expression>
@@ -340,9 +387,17 @@
           </Edges>
         </Workflow>
       </Expression>
+      <Expression xsi:type="lv:StreamDevices">
+        <Name>LiveView</Name>
+        <Description>Streams the devices in this machine's rig.yml that the workflow publishes, over ZeroMQ, for rig-control's Calibrations page: the body camera as Camera-Body.video on TCP 5558 (5 JPEG frames a second at 320 x 240 unless its liveView: in rig.yml says otherwise), data on 5556. Live only: nothing is recorded. Last in the workflow, because it streams only subjects built before it.</Description>
+        <lv:ConfigRoot>C:\Coen-Lab-Local\RigConfigs</lv:ConfigRoot>
+        <lv:DataPort>5556</lv:DataPort>
+        <lv:VideoPort>5558</lv:VideoPort>
+      </Expression>
     </Nodes>
     <Edges>
       <Edge From="0" To="1" Label="Source1" />
+      <Edge From="0" To="8" Label="Source1" />
       <Edge From="2" To="3" Label="Source1" />
       <Edge From="4" To="5" Label="Source1" />
       <Edge From="6" To="7" Label="Source1" />
