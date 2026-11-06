@@ -5,15 +5,17 @@
 # The balance is read by eye (OpenRigs.Devices ManualBalance): after each burst the run asks for the
 # weight and waits up to weighTimeoutS for it to be typed, taking that one reading (settleWindow 1).
 # Each sample fires `repeats` pulses at `size` ms, then weighs the gain. Pick repeats so the gain
-# per sample is at least 50 times the balance's last digit: on a 1 mg balance, 25 pulses of about
-# 2 ul weigh about 50 mg.
+# per sample is well above the balance's last digit: 100 pulses at the short widths, fewer at the
+# long ones, where each pulse delivers more; widths from 20 ms (Pip, 6 Nov 2026). Pulses are 50 ms
+# apart, as av-dome delivers a reward (rig.yml interPulseInterval), so the curve is measured as
+# rewards are given.
 procedure:
   samples:
-    - { size: 10, repeats: 25, interPulseIntervalMs: 500 }
-    - { size: 20, repeats: 25, interPulseIntervalMs: 500 }
-    - { size: 40, repeats: 25, interPulseIntervalMs: 500 }
-    - { size: 60, repeats: 25, interPulseIntervalMs: 500 }
-    - { size: 80, repeats: 25, interPulseIntervalMs: 500 }
+    - { size: 20, repeats: 100, interPulseIntervalMs: 50 }
+    - { size: 30, repeats: 100, interPulseIntervalMs: 50 }
+    - { size: 40, repeats: 75, interPulseIntervalMs: 50 }
+    - { size: 60, repeats: 50, interPulseIntervalMs: 50 }
+    - { size: 80, repeats: 50, interPulseIntervalMs: 50 }
   xName: pulse_width
   xUnit: ms
   primingPulses: 5

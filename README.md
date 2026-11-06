@@ -14,7 +14,7 @@ Run it from rig-control's Calibrations page, the only place it is offered: it is
   - `CameraSerialNumber`, `CameraExposureTime`: `camera: body:`'s, and `CameraFrequency`: `cameraTriggerController: trigger0Frequency`. The body camera runs on camera trigger 0 (DO0) and is streamed by `OpenRigs.LiveView` (5558) for the Calibrations page to show live; nothing is recorded. Trigger 1 stays off, so DO1 stays a valve line.
   
   `Notes` (free text kept in the curve) is taken only from a run in the Bonsai editor; the page sends none. The page refuses a line that `outputPulseEnable` does not list, and does not show one rig.yml gives another job (the domes' DO3, the Zapit TTL).
-- **`config\valve-calibration.yml`**: the procedure (pulse widths, repeats, priming, fit, and how long each weighing waits). Committed, the same for every rig.
+- **`config\valve-calibration.yml`**: the procedure (pulse widths, repeats, priming, fit, and how long each weighing waits). Committed, the same for every rig. Five widths, each a burst weighed once: 20 ms x 100, 30 ms x 100, 40 ms x 75, 60 ms x 50 and 80 ms x 50 pulses, many at the short widths and fewer at the long ones, where each pulse delivers more. Pulses are 50 ms apart, the gap av-dome leaves between a reward's pulses (rig.yml `interPulseInterval`).
 
 ## The Balance, Read by Eye
 
@@ -27,7 +27,7 @@ The balance is read by eye: the workflow runs `OpenRigs.Devices:ManualBalance.bo
 3. Press **Start**. The procedure primes the line, asks for the baseline weight, fires each sample's pulses and asks for each weight.
 4. **Finished** once `calibration\<FileName>.json` is written beside rig.yml, with a dated copy in `calibration\history\`. The page lists the volume per pulse at each width (`points`) and shows the new curve. A curve that is not monotone is refused and nothing is written.
 
-A line still set to `FixedPulse` keeps its fixed width until rig.yml points it at the artefact:
+A line still set to `FixedPulse` keeps its fixed width until rig.yml points it at the artefact. The Calibrations page says so, and its Use Calibration button makes that change, once asked and with a Lab PIN, to that line alone (the rest of rig.yml, comments included, kept as it was, the old file in `_backups`):
 
 ```yaml
 DO1: { discriminatorType: CalibratedPulse, artefact: calibration/valve-DO1.json }
