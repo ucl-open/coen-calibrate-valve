@@ -12,7 +12,7 @@ Run it from rig-control's Calibrations page, the only place it is offered: it is
   - `Channel`: the line's number.
   - `FileName`: the line's artefact name. That is its own `artefact:` when rig.yml already calibrates it, else `valve-DO<n>`.
   
-  `Notes` (free text kept in the curve) is taken only from a run in the Bonsai editor; the page sends none. The page refuses a line that `outputPulseEnable` does not list, or that rig.yml gives another job (the domes' DO3, the Zapit TTL).
+  `Notes` (free text kept in the curve) is taken only from a run in the Bonsai editor; the page sends none. The page refuses a line that `outputPulseEnable` does not list, and does not show one rig.yml gives another job (the domes' DO3, the Zapit TTL).
 - **`config\valve-calibration.yml`**: the procedure (pulse widths, repeats, priming, fit, and how long each weighing waits). Committed, the same for every rig.
 
 ## The Balance, Read by Eye
