@@ -24,7 +24,7 @@ The balance is read by eye: the workflow runs `OpenRigs.Devices:ManualBalance.bo
 
 1. On the Calibrations page, press the line's **Go** and give your Lab PIN.
 2. **Ready** once the board has answered. Put a container on the balance under the spout.
-3. Press **Start**. The procedure primes the line, asks for the baseline weight, fires each sample's pulses and asks for each weight.
+3. Press **Start**. The procedure primes the line (5 pulses of 500 ms), asks for the baseline weight, fires each sample's pulses and asks for each weight.
 4. **Finished** once `calibration\<FileName>.json` is written beside rig.yml, with a dated copy in `calibration\history\`. The page lists the volume per pulse at each width (`points`) and shows the new curve. A curve that is not monotone is refused and nothing is written.
 
 A line still set to `FixedPulse` keeps its fixed width until rig.yml points it at the artefact. The Calibrations page says so, and its Use Calibration button makes that change, once asked and with a Lab PIN, to that line alone (the rest of rig.yml, comments included, kept as it was, the old file in `_backups`):

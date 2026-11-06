@@ -37,6 +37,7 @@ procedure:
   xName: pulse_width
   xUnit: ms
   primingPulses: 5
+  primingSize: 500        # ms each, so the line is full before the baseline (Pip); unset is the largest sample's
   densityGPerMl: 1.0
   settleWindow: 1
   weighTimeoutS: 3600
